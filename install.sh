@@ -110,15 +110,4 @@ case $choice in
         done
         ;;
     2)
-        echo -e "\033[1;31mClearing bash history...\033[0m"
-        rm ~/.bash_history && history -c
-        echo -e "\033[1;32mHistory cleared successfully.\033[0m"
-        ;;
-    3)
-        echo -e "\033[1;34mExiting the script.\033[0m"
-        exit 0
-        ;;
-    *)
-        echo -e "\033[1;31mInvalid choice.\033[0m"
-        ;;
-esac
+        echo -e "\033[1;31mClearing bash history...
