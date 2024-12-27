@@ -8,8 +8,16 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Set root password
-echo "Setting root password..."
-echo -e "AD2L7ERad2l7er\nAD2L7ERad2l7er" | passwd root
+echo "Please enter a new root password:"
+read -s root_password
+read -s -p "Confirm root password: " root_password_confirm
+
+if [ "$root_password" != "$root_password_confirm" ]; then
+    echo -e "\nPasswords do not match. Please restart the script and try again."
+    exit 1
+fi
+
+echo -e "$root_password\n$root_password" | passwd root
 if [ $? -eq 0 ]; then
     echo "Root password set successfully!"
 else
@@ -110,4 +118,15 @@ case $choice in
         done
         ;;
     2)
-        echo -e "\033[1;31mClearing bash history...
+        echo -e "\033[1;31mClearing bash history...\033[0m"
+        rm ~/.bash_history && history -c
+        echo -e "\033[1;32mHistory cleared successfully.\033[0m"
+        ;;
+    3)
+        echo -e "\033[1;34mExiting the script.\033[0m"
+        exit 0
+        ;;
+    *)
+        echo -e "\033[1;31mInvalid choice.\033[0m"
+        ;;
+esac
