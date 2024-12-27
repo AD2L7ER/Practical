@@ -45,6 +45,27 @@ detect_os() {
     fi
 }
 
+# Confirmation menu
+confirmation_menu() {
+    echo -e "\nPlease select one of the following options:"
+    echo -e "1. Continue\033[1;34m (Proceed with the selected option)\033[0m"
+    echo -e "2. Return to Main Menu\033[1;34m (Go back to the main menu)\033[0m"
+    read -p "Your choice: " confirm_choice
+
+    case $confirm_choice in
+        1)
+            return 0
+            ;;
+        2)
+            main_menu
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice. Returning to main menu.\033[0m"
+            main_menu
+            ;;
+    esac
+}
+
 # Function to configure sshd_config
 configure_ssh() {
     if [ -f /etc/ssh/sshd_config ]; then
@@ -79,6 +100,7 @@ restart_ssh_service() {
 
 # Function to update the operating system
 update_system() {
+    confirmation_menu || return
     if [ "$os" == "ubuntu" ]; then
         echo "Updating Ubuntu operating system..."
         apt update && apt upgrade -y
@@ -90,6 +112,7 @@ update_system() {
 
 # Function to execute hetzner fix abuse
 fix_abuse() {
+    confirmation_menu || return
     echo -e "\033[1;32mExecuting hetzner fix abuse...\033[0m"
     sudo ufw enable
     sudo ufw allow 3010
@@ -114,17 +137,17 @@ fix_abuse() {
 
 # Function to clear bash history
 clear_history() {
+    confirmation_menu || return
     echo -e "\033[1;31mClearing bash history...\033[0m"
     rm ~/.bash_history && history -c
     echo -e "\033[1;32mHistory cleared successfully.\033[0m"
-    main_menu
 }
 
 # Function to install x-ui
 install_x_ui() {
+    confirmation_menu || return
     echo -e "\033[1;32mInstalling x-ui...\033[0m"
     bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-    main_menu
 }
 
 # Function to perform Speedtest
@@ -134,6 +157,7 @@ do_speedtest() {
     echo -e "2. Iran\033[1;34m (Run Iran-specific benchmark)\033[0m"
     read -p "Your choice: " speedtest_choice
 
+    confirmation_menu || return
     case $speedtest_choice in
         1)
             echo -e "\033[1;32mRunning global benchmark...\033[0m"
@@ -147,7 +171,6 @@ do_speedtest() {
             echo -e "\033[1;31mInvalid choice for Speedtest. Returning to main menu.\033[0m"
             ;;
     esac
-    main_menu
 }
 
 # Function to display the main menu
@@ -163,15 +186,19 @@ main_menu() {
     case $choice in
         1)
             fix_abuse
+            main_menu
             ;;
         2)
             clear_history
+            main_menu
             ;;
         3)
             install_x_ui
+            main_menu
             ;;
         4)
             do_speedtest
+            main_menu
             ;;
         5)
             echo -e "\033[1;34mExiting the script.\033[0m"
