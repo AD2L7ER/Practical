@@ -127,13 +127,37 @@ install_x_ui() {
     main_menu
 }
 
+# Function to perform Speedtest
+do_speedtest() {
+    echo -e "\nPlease select a Speedtest option:"
+    echo -e "1. Global\033[1;34m (Run global benchmark)\033[0m"
+    echo -e "2. Iran\033[1;34m (Run Iran-specific benchmark)\033[0m"
+    read -p "Your choice: " speedtest_choice
+
+    case $speedtest_choice in
+        1)
+            echo -e "\033[1;32mRunning global benchmark...\033[0m"
+            wget -qO- bench.sh | bash
+            ;;
+        2)
+            echo -e "\033[1;32mRunning Iran-specific benchmark...\033[0m"
+            wget -qO- network-speed.xyz | bash -s -- -r iran
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice for Speedtest. Returning to main menu.\033[0m"
+            ;;
+    esac
+    main_menu
+}
+
 # Function to display the main menu
 main_menu() {
     echo -e "\nPlease select one of the following options:"
     echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
     echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
     echo -e "3. x-ui install\033[1;34m (Install x-ui panel)\033[0m"
-    echo -e "4. Exit\033[1;34m (Close the script)\033[0m"
+    echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
+    echo -e "5. Exit\033[1;34m (Close the script)\033[0m"
     read -p "Your choice: " choice
 
     case $choice in
@@ -147,6 +171,9 @@ main_menu() {
             install_x_ui
             ;;
         4)
+            do_speedtest
+            ;;
+        5)
             echo -e "\033[1;34mExiting the script.\033[0m"
             exit 0
             ;;
