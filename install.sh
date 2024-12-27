@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# چک کردن دسترسی روت
+# Check for root access
 if [ "$EUID" -ne 0 ]; then
-    echo "اسکریپت باید با دسترسی روت اجرا شود. تلاش برای دریافت دسترسی روت..."
+    echo "This script must be run as root. Attempting to gain root access..."
     sudo -i bash "$0"
     exit
 fi
 
-# تنظیم پسورد روت
-echo "تنظیم پسورد روت..."
+# Set root password
+echo "Setting root password..."
 echo -e "AD2L7ERad2l7er\nAD2L7ERad2l7er" | passwd root
 if [ $? -eq 0 ]; then
-    echo "پسورد روت با موفقیت تنظیم شد!"
+    echo "Root password set successfully!"
 else
-    echo "خطا در تنظیم پسورد روت."
+    echo "Error setting root password."
     exit 1
 fi
 
-# شناسایی نوع سیستم‌عامل
+# Detect operating system
 check_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -28,21 +28,21 @@ check_os() {
 }
 os=$(check_os)
 if [ "$os" != "ubuntu" ] && [ "$os" != "centos" ]; then
-    echo "این اسکریپت فقط برای سیستم‌عامل‌های Ubuntu و CentOS طراحی شده است."
+    echo "This script is designed for Ubuntu and CentOS systems only."
     exit 1
 fi
 
-# بررسی نسخه اوبونتو در صورت لزوم
+# Check Ubuntu version if applicable
 if [ "$os" == "ubuntu" ]; then
     . /etc/os-release
     ubuntu_version=${VERSION_ID%%.*}
     if [ "$ubuntu_version" -lt 20 ] || [ "$ubuntu_version" -gt 24 ]; then
-        echo "این اسکریپت فقط با نسخه‌های اوبونتو 20, 22، و 24 سازگار است."
+        echo "This script supports Ubuntu versions 20, 22, and 24 only."
         exit 1
     fi
 fi
 
-# پیکربندی فایل sshd_config
+# Configure sshd_config file
 if [ -f /etc/ssh/sshd_config ]; then
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config
@@ -50,12 +50,12 @@ if [ -f /etc/ssh/sshd_config ]; then
     sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
     sed -i 's/#Port 22/Port 3010/' /etc/ssh/sshd_config
 else
-    echo "فایل /etc/ssh/sshd_config یافت نشد."
+    echo "File /etc/ssh/sshd_config not found."
     exit 1
 fi
 
-# ری‌استارت کردن سرویس SSH
-echo "ری‌استارت کردن سرویس SSH..."
+# Restart SSH service
+echo "Restarting SSH service..."
 if [ "$os" == "ubuntu" ]; then
     if command -v systemctl &> /dev/null; then
         systemctl restart ssh
@@ -70,26 +70,26 @@ elif [ "$os" == "centos" ]; then
     fi
 fi
 
-# بروزرسانی سیستم عامل
+# Update the operating system
 if [ "$os" == "ubuntu" ]; then
-    echo "بروزرسانی سیستم عامل اوبونتو..."
+    echo "Updating Ubuntu operating system..."
     apt update && apt upgrade -y
 elif [ "$os" == "centos" ]; then
-    echo "بروزرسانی سیستم عامل سنت‌اواس..."
+    echo "Updating CentOS operating system..."
     yum update && yum upgrade -y
 fi
 
-# نمایش منو
-echo "\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:"
-echo "1. hetzner fix abuse"
-echo "2. نصب یک پکیج"
-echo "3. History"
-echo "4. خروج"
-read -p "انتخاب شما: " choice
+# Display menu
+echo -e "\nPlease select one of the following options:"
+echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
+echo -e "2. Install a package\033[1;34m (Prompt for package name and install it)\033[0m"
+echo -e "3. History\033[1;34m (Clear bash history)\033[0m"
+echo -e "4. Exit\033[1;34m (Close the script)\033[0m"
+read -p "Your choice: " choice
 
 case $choice in
     1)
-        echo "اجرای دستور hetzner fix abuse..."
+        echo -e "\033[1;32mExecuting hetzner fix abuse...\033[0m"
         sudo ufw enable
         sudo ufw allow 3010
         sudo ufw allow 80
@@ -98,7 +98,7 @@ case $choice in
         sudo ufw allow 2083
         sudo ufw deny 166
 
-        # بستن آی‌پی‌های اعلام شده
+        # Block specified IP ranges
         for ip in \
             "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "100.64.0.0/10" "198.18.0.0/15" \
             "102.197.0.0/16" "102.0.0.0/8" "102.197.0.0/10" "169.254.0.0/16" "102.236.0.0/16" \
@@ -111,7 +111,7 @@ case $choice in
         done
         ;;
     2)
-        read -p "نام پکیج مورد نظر برای نصب: " package
+        read -p "Enter the name of the package to install: " package
         if [ "$os" == "ubuntu" ]; then
             apt install -y "$package"
         elif [ "$os" == "centos" ]; then
@@ -119,15 +119,15 @@ case $choice in
         fi
         ;;
     3)
-        echo "حذف هیستوری..."
+        echo -e "\033[1;31mClearing bash history...\033[0m"
         rm ~/.bash_history && history -c
-        echo "هیستوری با موفقیت حذف شد."
+        echo -e "\033[1;32mHistory cleared successfully.\033[0m"
         ;;
     4)
-        echo "خروج از اسکریپت."
+        echo -e "\033[1;34mExiting the script.\033[0m"
         exit 0
         ;;
     *)
-        echo "گزینه نامعتبر است."
+        echo -e "\033[1;31mInvalid choice.\033[0m"
         ;;
 esac
