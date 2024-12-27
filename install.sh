@@ -45,14 +45,14 @@ detect_os() {
     fi
 }
 
-# Confirmation menu
-confirmation_menu() {
+# Confirmation submenu
+confirmation_submenu() {
     echo -e "\nPlease select one of the following options:"
     echo -e "1. Continue\033[1;34m (Proceed with the selected option)\033[0m"
     echo -e "2. Return to Main Menu\033[1;34m (Go back to the main menu)\033[0m"
-    read -p "Your choice: " confirm_choice
+    read -p "Your choice: " submenu_choice
 
-    case $confirm_choice in
+    case $submenu_choice in
         1)
             return 0
             ;;
@@ -68,6 +68,7 @@ confirmation_menu() {
 
 # Function to configure sshd_config
 configure_ssh() {
+    confirmation_submenu || return
     if [ -f /etc/ssh/sshd_config ]; then
         sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
         sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config
@@ -82,6 +83,7 @@ configure_ssh() {
 
 # Function to restart SSH service
 restart_ssh_service() {
+    confirmation_submenu || return
     echo "Restarting SSH service..."
     if [ "$os" == "ubuntu" ]; then
         if command -v systemctl &> /dev/null; then
@@ -100,7 +102,7 @@ restart_ssh_service() {
 
 # Function to update the operating system
 update_system() {
-    confirmation_menu || return
+    confirmation_submenu || return
     if [ "$os" == "ubuntu" ]; then
         echo "Updating Ubuntu operating system..."
         apt update && apt upgrade -y
@@ -112,7 +114,7 @@ update_system() {
 
 # Function to execute hetzner fix abuse
 fix_abuse() {
-    confirmation_menu || return
+    confirmation_submenu || return
     echo -e "\033[1;32mExecuting hetzner fix abuse...\033[0m"
     sudo ufw enable
     sudo ufw allow 3010
@@ -137,7 +139,7 @@ fix_abuse() {
 
 # Function to clear bash history
 clear_history() {
-    confirmation_menu || return
+    confirmation_submenu || return
     echo -e "\033[1;31mClearing bash history...\033[0m"
     rm ~/.bash_history && history -c
     echo -e "\033[1;32mHistory cleared successfully.\033[0m"
@@ -145,19 +147,19 @@ clear_history() {
 
 # Function to install x-ui
 install_x_ui() {
-    confirmation_menu || return
+    confirmation_submenu || return
     echo -e "\033[1;32mInstalling x-ui...\033[0m"
     bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
 }
 
 # Function to perform Speedtest
 do_speedtest() {
+    confirmation_submenu || return
     echo -e "\nPlease select a Speedtest option:"
     echo -e "1. Global\033[1;34m (Run global benchmark)\033[0m"
     echo -e "2. Iran\033[1;34m (Run Iran-specific benchmark)\033[0m"
     read -p "Your choice: " speedtest_choice
 
-    confirmation_menu || return
     case $speedtest_choice in
         1)
             echo -e "\033[1;32mRunning global benchmark...\033[0m"
