@@ -82,9 +82,8 @@ fi
 # Display menu
 echo -e "\nPlease select one of the following options:"
 echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
-echo -e "2. Install a package\033[1;34m (Prompt for package name and install it)\033[0m"
-echo -e "3. History\033[1;34m (Clear bash history)\033[0m"
-echo -e "4. Exit\033[1;34m (Close the script)\033[0m"
+echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
+echo -e "3. Exit\033[1;34m (Close the script)\033[0m"
 read -p "Your choice: " choice
 
 case $choice in
@@ -111,19 +110,11 @@ case $choice in
         done
         ;;
     2)
-        read -p "Enter the name of the package to install: " package
-        if [ "$os" == "ubuntu" ]; then
-            apt install -y "$package"
-        elif [ "$os" == "centos" ]; then
-            yum install -y "$package"
-        fi
-        ;;
-    3)
         echo -e "\033[1;31mClearing bash history...\033[0m"
         rm ~/.bash_history && history -c
         echo -e "\033[1;32mHistory cleared successfully.\033[0m"
         ;;
-    4)
+    3)
         echo -e "\033[1;34mExiting the script.\033[0m"
         exit 0
         ;;
