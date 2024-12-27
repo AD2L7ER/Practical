@@ -11,6 +11,11 @@ check_root() {
 
 # Function to set root password
 set_root_password() {
+    if [ -f /root/.script_executed ]; then
+        echo "Root password has already been set. Skipping this step."
+        return
+    fi
+
     echo "Please enter a new root password:"
     read -s root_password
     read -s -p "Confirm root password: " root_password_confirm
@@ -23,6 +28,7 @@ set_root_password() {
     echo -e "$root_password\n$root_password" | passwd root
     if [ $? -eq 0 ]; then
         echo "Root password set successfully!"
+        touch /root/.script_executed
     else
         echo "Error setting root password."
         exit 1
@@ -111,6 +117,33 @@ clear_history() {
     echo -e "\033[1;31mClearing bash history...\033[0m"
     rm ~/.bash_history && history -c
     echo -e "\033[1;32mHistory cleared successfully.\033[0m"
+    main_menu
+}
+
+# Function to display the main menu
+main_menu() {
+    echo -e "\nPlease select one of the following options:"
+    echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
+    echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
+    echo -e "3. Exit\033[1;34m (Close the script)\033[0m"
+    read -p "Your choice: " choice
+
+    case $choice in
+        1)
+            fix_abuse
+            ;;
+        2)
+            clear_history
+            ;;
+        3)
+            echo -e "\033[1;34mExiting the script.\033[0m"
+            exit 0
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice.\033[0m"
+            main_menu
+            ;;
+    esac
 }
 
 # Main script execution
@@ -134,26 +167,4 @@ fi
 configure_ssh
 restart_ssh_service
 update_system
-
-# Display menu
-echo -e "\nPlease select one of the following options:"
-echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
-echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
-echo -e "3. Exit\033[1;34m (Close the script)\033[0m"
-read -p "Your choice: " choice
-
-case $choice in
-    1)
-        fix_abuse
-        ;;
-    2)
-        clear_history
-        ;;
-    3)
-        echo -e "\033[1;34mExiting the script.\033[0m"
-        exit 0
-        ;;
-    *)
-        echo -e "\033[1;31mInvalid choice.\033[0m"
-        ;;
-esac
+main_menu
