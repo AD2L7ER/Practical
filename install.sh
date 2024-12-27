@@ -120,12 +120,20 @@ clear_history() {
     main_menu
 }
 
+# Function to install x-ui
+install_x_ui() {
+    echo -e "\033[1;32mInstalling x-ui...\033[0m"
+    bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+    main_menu
+}
+
 # Function to display the main menu
 main_menu() {
     echo -e "\nPlease select one of the following options:"
     echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
     echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
-    echo -e "3. Exit\033[1;34m (Close the script)\033[0m"
+    echo -e "3. x-ui install\033[1;34m (Install x-ui panel)\033[0m"
+    echo -e "4. Exit\033[1;34m (Close the script)\033[0m"
     read -p "Your choice: " choice
 
     case $choice in
@@ -136,6 +144,9 @@ main_menu() {
             clear_history
             ;;
         3)
+            install_x_ui
+            ;;
+        4)
             echo -e "\033[1;34mExiting the script.\033[0m"
             exit 0
             ;;
