@@ -181,4 +181,59 @@ main_menu() {
     echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
     echo -e "3. x-ui install\033[1;34m (Install x-ui panel)\033[0m"
     echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
-    echo
+    echo -e "5. Exit\033[1;34m (Close the script)\033[0m"
+    read -p "Your choice: " choice
+
+    case $choice in
+        1)
+            fix_abuse
+            main_menu
+            ;;
+        2)
+            clear_history
+            main_menu
+            ;;
+        3)
+            install_x_ui
+            main_menu
+            ;;
+        4)
+            do_speedtest
+            main_menu
+            ;;
+        5)
+            echo -e "\033[1;34mExiting the script.\033[0m"
+            exit 0
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice.\033[0m"
+            main_menu
+            ;;
+    esac
+}
+
+#############################
+#       MAIN EXECUTION      #
+#############################
+
+check_root
+set_root_password
+os=$(detect_os)
+if [ "$os" != "ubuntu" ] && [ "$os" != "centos" ]; then
+    echo "This script is designed for Ubuntu and CentOS systems only."
+    exit 1
+fi
+
+if [ "$os" == "ubuntu" ]; then
+    . /etc/os-release
+    ubuntu_version=${VERSION_ID%%.*}
+    if [ "$ubuntu_version" -lt 20 ] || [ "$ubuntu_version" -gt 24 ]; then
+        echo "This script supports Ubuntu versions 20, 22, and 24 only."
+        exit 1
+    fi
+fi
+
+configure_ssh
+restart_ssh_service
+update_system
+main_menu
