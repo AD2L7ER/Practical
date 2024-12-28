@@ -128,7 +128,9 @@ fix_abuse() {
         "2.60.0.0/16" "5.1.41.0/12" "172.0.0.0/8" "192.0.0.0/8" "200.0.0.0/8" \
         "198.51.100.0/24" "203.0.113.0/24" "224.0.0.0/4" "240.0.0.0/4" "255.255.255.255/32" \
         "192.0.0.0/24" "192.0.2.0/24" "127.0.0.0/8" "127.0.53.53" "192.88.99.0/24" \
-        "198.18.140.0/24" "102.230.9.0/24" "102.233.71.0/24";
+        "198.18.140.0/24" "102.230.9.0/24" "102.233.71.0/24" "185.235.86.0/24" "185.235.87.0/24" \
+        "114.208.187.0/24" "216.218.185.0/24" "206.191.152.0/24" "45.14.174.0/24" "195.137.167.0/24" \
+        "103.58.50.1/24" "25.0.0.0/19" "103.29.38.0/24" "103.49.99.0/24";
     do
         sudo ufw deny out from any to "$ip"
     done
@@ -179,59 +181,4 @@ main_menu() {
     echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
     echo -e "3. x-ui install\033[1;34m (Install x-ui panel)\033[0m"
     echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
-    echo -e "5. Exit\033[1;34m (Close the script)\033[0m"
-    read -p "Your choice: " choice
-
-    case $choice in
-        1)
-            fix_abuse
-            main_menu
-            ;;
-        2)
-            clear_history
-            main_menu
-            ;;
-        3)
-            install_x_ui
-            main_menu
-            ;;
-        4)
-            do_speedtest
-            main_menu
-            ;;
-        5)
-            echo -e "\033[1;34mExiting the script.\033[0m"
-            exit 0
-            ;;
-        *)
-            echo -e "\033[1;31mInvalid choice.\033[0m"
-            main_menu
-            ;;
-    esac
-}
-
-#############################
-#       MAIN EXECUTION      #
-#############################
-
-check_root
-set_root_password
-os=$(detect_os)
-if [ "$os" != "ubuntu" ] && [ "$os" != "centos" ]; then
-    echo "This script is designed for Ubuntu and CentOS systems only."
-    exit 1
-fi
-
-if [ "$os" == "ubuntu" ]; then
-    . /etc/os-release
-    ubuntu_version=${VERSION_ID%%.*}
-    if [ "$ubuntu_version" -lt 20 ] || [ "$ubuntu_version" -gt 24 ]; then
-        echo "This script supports Ubuntu versions 20, 22, and 24 only."
-        exit 1
-    fi
-fi
-
-configure_ssh
-restart_ssh_service
-update_system
-main_menu
+    echo
