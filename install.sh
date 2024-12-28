@@ -31,7 +31,7 @@ set_root_password() {
 
     echo -e "$root_password\n$root_password" | passwd root
     if [ $? -eq 0 ]; then
-        echo "Root password set successfully!"
+        echo -e "[1;32mRoot password set successfully![0m"
         touch /root/.script_executed
     else
         echo "Error setting root password."
