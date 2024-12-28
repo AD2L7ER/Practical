@@ -31,7 +31,7 @@ set_root_password() {
 
     echo -e "$root_password\n$root_password" | passwd root
     if [ $? -eq 0 ]; then
-        echo -e "[1;32mRoot password set successfully![0m"
+        echo -e "\033[1;32mRoot password set successfully!\033[0m"
         touch /root/.script_executed
     else
         echo "Error setting root password."
@@ -174,65 +174,141 @@ do_speedtest() {
     esac
 }
 
-# Display the main menu
-main_menu() {
-    echo -e "\nPlease select one of the following options:"
-    echo -e "1. hetzner fix abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
-    echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
-    echo -e "3. x-ui install\033[1;34m (Install x-ui panel)\033[0m"
-    echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
-    echo -e "5. Exit\033[1;34m (Close the script)\033[0m"
-    read -p "Your choice: " choice
+# Configure 6to4 tunneling
+configure_6to4_tunneling() {
+    confirmation_menu || return
 
-    case $choice in
+    echo -e "\nPlease select a tunneling configuration option:"
+    echo -e "1. Configure for Iran Server\033[1;34m (Setup tunneling for Iran)\033[0m"
+    echo -e "2. Configure for Foreign Server\033[1;34m (Setup tunneling for outside servers)\033[0m"
+    read -p "Your choice: " tunneling_choice
+
+    case $tunneling_choice in
         1)
-            fix_abuse
-            main_menu
+            echo -e "\033[1;32mConfiguring 6to4 tunneling for Iran server...\033[0m"
+            read -p "Enter IPv4 address of Iran server: " ip_server_iran
+            read -p "Enter IPv4 address of foreign server: " ip_server_foreign
+
+            net_interface=$(ip route | grep default | awk '{print $5}')
+            cat <<EOL > /etc/rc.local
+#!/bin/bash
+ip tunnel add 6to4tun_IR mode sit remote $ip_server_foreign local $ip_server_iran
+ip -6 addr add 2001:470:1f10:e1f::1/64 dev 6to4tun_IR
+ip link set 6to4tun_IR mtu 1480
+ip link set 6to4tun_IR up
+ip -6 tunnel add GRE6Tun_IR mode ip6gre remote 2001:470:1f10:e1f::2 local 2001:470:1f10:e1f::1
+ip addr add 172.16.1.1/30 dev GRE6Tun_IR
+ip link set GRE6Tun_IR mtu 1436
+ip link set GRE6Tun_IR up
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -t nat -A POSTROUTING -o $net_interface -j MASQUERADE
+iptables -A FORWARD -j ACCEPT
+sysctl -w net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.conf
+sysctl -p
+service iptables save
+service iptables restart
+EOL
+
+            chmod +x /etc/rc.local
+            /etc/rc.local
             ;;
         2)
-            clear_history
-            main_menu
+            echo -e "\033[1;32mConfiguring 6to4 tunneling for Foreign server...\033[0m"
+            read -p "Enter IPv4 address of foreign server: " ip_server_foreign
+            read -p "Enter IPv4 address of Iran server: " ip_server_iran
+
+            net_interface=$(ip route | grep default | awk '{print $5}')
+            cat <<EOL > /etc/rc.local
+#!/bin/bash
+ip tunnel add 6to4tun_KH mode sit remote $ip_server_iran local $ip_server_foreign
+ip -6 addr add 2001:470:1f10:e1f::2/64 dev 6to4tun_KH
+ip link set 6to4tun_KH mtu 1480
+ip link set 6to4tun_KH up
+ip -6 tunnel add GRE6Tun_KH mode ip6gre remote 2001:470:1f10:e1f::1 local 2001:470:1f10:e1f::2
+ip addr add 172.16.1.2/30 dev GRE6Tun_KH
+ip link set GRE6Tun_KH mtu 1436
+ip link set GRE6Tun_KH up
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -t nat -A POSTROUTING -o $net_interface -j MASQUERADE
+iptables -A FORWARD -j ACCEPT
+sysctl -w net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.conf
+sysctl -p
+service iptables save
+service iptables restart
+EOL
+
+            chmod +x /etc/rc.local
+            /etc/rc.local
             ;;
-        3)
-            install_x_ui
-            main_menu
+        *)
+            echo -e "\033[1;31mInvalid choice. Returning to main menu.\033[0m"
             ;;
-        4)
-            do_speedtest
-            main_menu
-            ;;
-        5)
-            echo -e "\033[1;34mExiting the script.\033[0m"
+    esac
+}
+
+# Install Gost tunnels
+install_gost_tunnels() {
+    confirmation_menu || return
+    echo -e "\033[1;32mInstalling Gost tunnels...\033[0m"
+    bash <(curl -Ls https://raw.githubusercontent.com/masoudgb/Gost-ip6/main/install.sh)
+}
+
+#############################
+#        MAIN MENU         #
+#############################
+main_menu() {
+    echo -e "\n================ Main Menu ================"
+    echo -e "1. Hetzner Fix Abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
+    echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
+    echo -e "3. x-ui Install\033[1;34m (Install x-ui panel)\033[0m"
+    echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
+    echo -e "5. 6to4 IPv6 Tunneling\033[1;34m (Configure tunneling options)\033[0m"
+    echo -e "6. Gost tunnels\033[1;34m (Install Gost Tunneling)\033[0m"
+    echo -e "7. Exit\033[1;34m (Close the script)\033[0m"
+    read -p "Your choice: " main_choice
+
+    case $main_choice in
+        1) fix_abuse ;;
+        2) clear_history ;;
+        3) install_x_ui ;;
+        4) do_speedtest ;;
+        5) configure_6to4_tunneling ;;
+        6) install_gost_tunnels ;;
+        7)
+            echo -e "\033[1;32mExiting script. Goodbye!\033[0m"
             exit 0
             ;;
         *)
-            echo -e "\033[1;31mInvalid choice.\033[0m"
+            echo -e "\033[1;31mInvalid choice. Please select a valid option.\033[0m"
             main_menu
             ;;
     esac
 }
 
 #############################
-#       MAIN EXECUTION      #
+#       SCRIPT START       #
 #############################
-
 check_root
-set_root_password
 os=$(detect_os)
-if [ "$os" != "ubuntu" ] && [ "$os" != "centos" ]; then
-    echo "This script is designed for Ubuntu and CentOS systems only."
-    exit 1
-fi
-
-if [ "$os" == "ubuntu" ]; then
-    . /etc/os-release
-    ubuntu_version=${VERSION_ID%%.*}
-    if [ "$ubuntu_version" -lt 20 ] || [ "$ubuntu_version" -gt 24 ]; then
-        echo "This script supports Ubuntu versions 20, 22, and 24 only."
-        exit 1
-    fi
-fi
-
+set_root_password
 configure_ssh
 restart_ssh_service
 update_system
