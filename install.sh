@@ -113,8 +113,12 @@ update_system() {
 fix_abuse() {
     confirmation_menu || return
     echo -e "[1;32mExecuting hetzner fix abuse...[0m"
-    echo "Activating UFW..."
-    sudo ufw --force enable > /dev/null 2>&1
+    if ! sudo ufw status | grep -q 'Status: active'; then
+        echo "Activating UFW..."
+        sudo ufw --force enable > /dev/null 2>&1
+    else
+        echo "UFW is already active. Skipping activation."
+    fi
     confirmation_menu || return
     echo -e "\033[1;32mExecuting hetzner fix abuse...\033[0m"
     sudo ufw enable
