@@ -114,7 +114,7 @@ fix_abuse() {
     confirmation_menu || return
     echo -e "[1;32mExecuting hetzner fix abuse...[0m"
     echo "Activating UFW..."
-    echo "y" | sudo ufw enable
+    yes | sudo ufw enable
     confirmation_menu || return
     echo -e "\033[1;32mExecuting hetzner fix abuse...\033[0m"
     sudo ufw enable
