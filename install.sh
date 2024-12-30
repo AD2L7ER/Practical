@@ -7,9 +7,8 @@
 # Check for root access
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        echo "This script must be run as root. Attempting to gain root access..."
-        sudo -i bash "$0"
-        exit
+        echo "This script must be run as root. Please run the script again with 'sudo'."
+        exit 1
     fi
 }
 
@@ -31,7 +30,7 @@ set_root_password() {
 
     echo -e "$root_password\n$root_password" | passwd root
     if [ $? -eq 0 ]; then
-        echo -e "[1;32m$(tput bold)Root password set successfully![0m"
+        echo -e "\e[1;32mRoot password set successfully!\e[0m"
         touch /root/.script_executed
     else
         echo "Error setting root password."
@@ -43,41 +42,25 @@ set_root_password() {
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        echo $ID
+        echo "$ID"
     else
         echo "unknown"
     fi
 }
 
-# Display confirmation menu
-confirmation_menu() {
-    echo -e "\nPlease select one of the following options:"
-    echo -e "1. Continue[1;34m$(tput bold) (Proceed with the selected option)$(tput sgr0)"
-    echo -e "2. Return to Main Menu$(tput setaf 4)$(tput bold) (Go back to the main menu)\033[0m"
-    read -p "Your choice: " confirm_choice
-
-    case $confirm_choice in
-        1) return 0 ;;
-        2) main_menu ;;
-        *)
-            echo -e "[1;31m$(tput bold)Invalid choice. Returning to main menu.\033[0m"
-            main_menu
-            ;;
-    esac
-}
-
 # Configure sshd_config
 configure_ssh() {
-    if [ -f /etc/ssh/sshd_config ]; then
-        sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
-        sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config
-        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-        sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-        sed -i 's/#Port 22/Port 3010/' /etc/ssh/sshd_config
-    else
-        echo "File /etc/ssh/sshd_config not found."
+    if [ ! -f /etc/ssh/sshd_config ]; then
+        echo "File /etc/ssh/sshd_config not found. Please ensure SSH is installed."
         exit 1
     fi
+
+    cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak  # Backup the sshd_config
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
+    sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i 's/#Port 22/Port 3010/' /etc/ssh/sshd_config
 }
 
 # Restart SSH service
@@ -85,16 +68,19 @@ restart_ssh_service() {
     echo "Restarting SSH service..."
     if [ "$os" == "ubuntu" ]; then
         if command -v systemctl &> /dev/null; then
-            systemctl restart ssh
+            systemctl restart ssh || { echo "Failed to restart SSH"; exit 1; }
         else
-            service ssh restart
+            service ssh restart || { echo "Failed to restart SSH"; exit 1; }
         fi
     elif [ "$os" == "centos" ]; then
         if command -v systemctl &> /dev/null; then
-            systemctl restart sshd
+            systemctl restart sshd || { echo "Failed to restart SSH"; exit 1; }
         else
-            service sshd restart
+            service sshd restart || { echo "Failed to restart SSH"; exit 1; }
         fi
+    else
+        echo "Unsupported OS for SSH service restart"
+        exit 1
     fi
 }
 
@@ -111,64 +97,127 @@ update_system() {
 
 # Execute hetzner fix abuse
 fix_abuse() {
-    confirmation_menu || return
-    echo -e "$(tput setaf 2)$(tput bold)Executing hetzner fix abuse...$(tput sgr0)"
-    if ! sudo ufw status | grep -q 'Status: active'; then
-        echo "Activating UFW..."
-        sudo ufw --force enable > /dev/null 2>&1
-    else
-        echo "UFW is already active. Skipping activation."
-    fi
+    echo -e "
+You have selected Hetzner Fix Abuse. Please confirm your choice:"
+    echo -e "1. Proceed with Hetzner Fix Abuse actions"
+    echo -e "2. Return to Main Menu"
+    read -p "Your choice: " abuse_choice
 
-    sudo ufw allow 3010
-    echo -e "Ensuring SSH port (3010) is always accessible..."
-    if ! sudo ufw status | grep -q '3010.*ALLOW'; then
-        sudo ufw allow 3010 comment 'Ensure SSH connectivity'
-    fi
-    sudo ufw allow 80
-    sudo ufw allow 2086
-    sudo ufw allow 443
-    sudo ufw allow 2083
-    sudo ufw deny 166
+    case $abuse_choice in
+        1)
+            echo -e "$(tput setaf 2)$(tput bold)Executing hetzner fix abuse...$(tput sgr0)"
+            
+            # Check if ufw is installed
+            if ! command -v ufw &>/dev/null; then
+                echo "ufw is not installed. Installing ufw..."
+                if [ "$os" == "ubuntu" ]; then
+                    apt-get install -y ufw
+                elif [ "$os" == "centos" ]; then
+                    yum install -y ufw
+                else
+                    echo "Unknown OS. Please install ufw manually or remove ufw usage."
+                    return
+                fi
+            fi
 
-    # Block specified IP ranges
-    for ip in \
-        "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "100.64.0.0/10" "198.18.0.0/15" \
-        "102.197.0.0/16" "102.0.0.0/8" "102.197.0.0/10" "169.254.0.0/16" "102.236.0.0/16" \
-        "2.60.0.0/16" "5.1.41.0/12" "172.0.0.0/8" "192.0.0.0/8" "200.0.0.0/8" \
-        "198.51.100.0/24" "203.0.113.0/24" "224.0.0.0/4" "240.0.0.0/4" "255.255.255.255/32" \
-        "192.0.0.0/24" "192.0.2.0/24" "127.0.0.0/8" "127.0.53.53" "192.88.99.0/24" \
-        "198.18.140.0/24" "102.230.9.0/24" "102.233.71.0/24" "185.235.86.0/24" "185.235.87.0/24" \
-        "114.208.187.0/24" "216.218.185.0/24" "206.191.152.0/24" "45.14.174.0/24" "195.137.167.0/24" \
-        "103.58.50.1/24" "25.0.0.0/19" "103.29.38.0/24" "103.49.99.0/24";
-    do
-        sudo ufw deny out from any to "$ip"
-    done
+            if ! sudo ufw status | grep -q 'Status: active'; then
+                echo "Activating UFW..."
+                sudo ufw --force enable > /dev/null 2>&1
+            else
+                echo "UFW is already active. Skipping activation."
+            fi
 
-    echo -e "$(tput setaf 2)$(tput bold)Firewall rules applied successfully.$(tput sgr0)"
+            # Make sure port 3010 is open for SSH
+            sudo ufw allow 3010 comment 'Ensure SSH connectivity'
+            sudo ufw allow 80
+            sudo ufw allow 2086
+            sudo ufw allow 443
+            sudo ufw allow 2083
+            sudo ufw deny 166
+
+            # Block specified IP ranges
+            for ip in \
+                "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "100.64.0.0/10" "198.18.0.0/15" \
+                "102.197.0.0/16" "102.0.0.0/8" "102.197.0.0/10" "169.254.0.0/16" "102.236.0.0/16" \
+                "2.60.0.0/16" "5.1.41.0/12" "172.0.0.0/8" "192.0.0.0/8" "200.0.0.0/8" \
+                "198.51.100.0/24" "203.0.113.0/24" "224.0.0.0/4" "240.0.0.0/4" "255.255.255.255/32" \
+                "192.0.0.0/24" "192.0.2.0/24" "127.0.0.0/8" "127.0.53.53" "192.88.99.0/24" \
+                "198.18.140.0/24" "102.230.9.0/24" "102.233.71.0/24" "185.235.86.0/24" "185.235.87.0/24" \
+                "114.208.187.0/24" "216.218.185.0/24" "206.191.152.0/24" "45.14.174.0/24" "195.137.167.0/24" \
+                "103.58.50.1/24" "25.0.0.0/19" "103.29.38.0/24" "103.49.99.0/24"
+            do
+                sudo ufw deny out from any to "$ip"
+            done
+
+            echo -e "$(tput setaf 2)$(tput bold)Firewall rules applied successfully.$(tput sgr0)"
+            ;;
+        2)
+            # Just return here; main_menu will be called from the case block in main_menu()
+            return
+            ;;
+        *)
+            echo -e "[1;31mInvalid choice. Returning to main menu.[0m"
+            return
+            ;;
+    esac
 }
 
-# Clear bash history
+# Clear bash history with user confirmation
 clear_history() {
-    confirmation_menu || return
-    echo -e "$(tput setaf 1)$(tput bold)Clearing bash history...\033[0m"
-    rm ~/.bash_history && history -c
-    echo -e "$(tput setaf 2)$(tput bold)History cleared successfully.\033[0m"
+    echo -e "\033[1;32mWhat would you like to do?\033[0m"
+    echo -e "1. Continue (Clear history)"
+    echo -e "2. Return to Main Menu"
+    read -p "Your choice: " history_choice
+
+    case $history_choice in
+        1)
+            echo -e "$(tput setaf 1)$(tput bold)Clearing bash history...\033[0m"
+            if [ -f ~/.bash_history ]; then
+                rm ~/.bash_history && history -c
+                echo -e "$(tput setaf 2)$(tput bold)History cleared successfully.\033[0m"
+            else
+                echo -e "$(tput setaf 3)No bash history file found. Skipping.\033[0m"
+            fi
+            ;;
+        2)
+            return
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice. Returning to the main menu.\033[0m"
+            return
+            ;;
+    esac
 }
 
-# Install x-ui
+# Install x-ui with continue/return option
 install_x_ui() {
-    confirmation_menu || return
-    echo -e "\033[1;32mInstalling x-ui...\033[0m"
-    bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+    echo -e "\033[1;32mYou have selected x-ui Installation. What do you want to do?\033[0m"
+    echo -e "1. Continue (Install x-ui)"
+    echo -e "2. Return to Main Menu"
+    read -p "Your choice: " choice
+
+    case $choice in
+        1)
+            echo -e "\033[1;32mInstalling x-ui...\033[0m"
+            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+            echo "Installation complete!"
+            ;;
+        2)
+            return
+            ;;
+        *)
+            echo -e "\033[1;31mInvalid choice. Returning to the main menu.\033[0m"
+            return
+            ;;
+    esac
 }
 
 # Perform Speedtest
 do_speedtest() {
-    confirmation_menu || return
     echo -e "\nPlease select a Speedtest option:"
     echo -e "1. Global\033[1;34m (Run global benchmark)\033[0m"
     echo -e "2. Iran\033[1;34m (Run Iran-specific benchmark)\033[0m"
+    echo -e "3. Return to Main Menu\033[1;34m (Go back to the main menu)\033[0m"
     read -p "Your choice: " speedtest_choice
 
     case $speedtest_choice in
@@ -180,19 +229,22 @@ do_speedtest() {
             echo -e "\033[1;32mRunning Iran-specific benchmark...\033[0m"
             wget -qO- network-speed.xyz | bash -s -- -r iran
             ;;
+        3)
+            return
+            ;;
         *)
-            echo -e "\033[1;31mInvalid choice for Speedtest. Returning to main menu.\033[0m"
+            echo -e "\033[1;31mInvalid choice. Returning to main menu.\033[0m"
+            return
             ;;
     esac
 }
 
 # Configure 6to4 tunneling
 configure_6to4_tunneling() {
-    confirmation_menu || return
-
     echo -e "\nPlease select a tunneling configuration option:"
     echo -e "1. Configure for Iran Server\033[1;34m (Setup tunneling for Iran)\033[0m"
     echo -e "2. Configure for Foreign Server\033[1;34m (Setup tunneling for outside servers)\033[0m"
+    echo -e "3. Return to Main Menu\033[1;34m (Go back to the main menu)\033[0m"
     read -p "Your choice: " tunneling_choice
 
     case $tunneling_choice in
@@ -270,17 +322,21 @@ EOL
             chmod +x /etc/rc.local
             /etc/rc.local
             ;;
+        3)
+            return
+            ;;
         *)
             echo -e "\033[1;31mInvalid choice. Returning to main menu.\033[0m"
+            return
             ;;
     esac
 }
 
 # Install Gost tunnels
 install_gost_tunnels() {
-    confirmation_menu || return
     echo -e "\033[1;32mInstalling Gost tunnels...\033[0m"
     bash <(curl -Ls https://raw.githubusercontent.com/masoudgb/Gost-ip6/main/install.sh)
+    echo -e "\033[1;32mGost tunnels installation completed.\033[0m"
 }
 
 #############################
@@ -292,23 +348,23 @@ main_menu() {
 ╔═══════════════════════════════════════════════╗
 ║                   Main Menu                   ║
 ╠═══════════════════════════════════════════════╣
-║ 1. $(tput setaf 4)Hetzner Fix Abuse$(tput sgr0)                     ║
-║ 2. $(tput setaf 4)History$(tput sgr0)                              ║
+║ 1. $(tput setaf 2)Hetzner Fix Abuse$(tput sgr0)                     ║
+║ 2. $(tput setaf 3)History$(tput sgr0)                              ║
 ║ 3. $(tput setaf 4)x-ui Install$(tput sgr0)                         ║
-║ 4. $(tput setaf 4)Speedtest$(tput sgr0)                            ║
-║ 5. $(tput setaf 4)6to4 IPv6 Tunneling$(tput sgr0)                  ║
-║ 6. $(tput setaf 4)Gost Tunnels$(tput sgr0)                         ║
-║ 0. $(tput setaf 1)Exit$(tput sgr0)                                 ║
+║ 4. $(tput setaf 5)Speedtest$(tput sgr0)                            ║
+║ 5. $(tput setaf 6)6to4 IPv6 Tunneling$(tput sgr0)                  ║
+║ 6. $(tput setaf 1)Gost Tunnels$(tput sgr0)                         ║
+║ 0. $(tput setaf 7)Exit$(tput sgr0)                                 ║
 ╚═══════════════════════════════════════════════╝"
     read -p "Your choice: " main_choice
 
     case $main_choice in
-        1) fix_abuse ;;
-        2) clear_history ;;
-        3) install_x_ui ;;
-        4) do_speedtest ;;
-        5) configure_6to4_tunneling ;;
-        6) install_gost_tunnels ;;
+        1) fix_abuse ; main_menu ;;
+        2) clear_history ; main_menu ;;
+        3) install_x_ui ; main_menu ;;
+        4) do_speedtest ; main_menu ;;
+        5) configure_6to4_tunneling ; main_menu ;;
+        6) install_gost_tunnels ; main_menu ;;
         0)
             echo -e "\033[1;32mExiting script. Goodbye!\033[0m"
             exit 0
