@@ -31,7 +31,7 @@ set_root_password() {
 
     echo -e "$root_password\n$root_password" | passwd root
     if [ $? -eq 0 ]; then
-        echo -e "\033[1;32mRoot password set successfully!\033[0m"
+        echo -e "[1;32m$(tput bold)Root password set successfully![0m"
         touch /root/.script_executed
     else
         echo "Error setting root password."
@@ -52,15 +52,15 @@ detect_os() {
 # Display confirmation menu
 confirmation_menu() {
     echo -e "\nPlease select one of the following options:"
-    echo -e "1. Continue\033[1;34m (Proceed with the selected option)\033[0m"
-    echo -e "2. Return to Main Menu\033[1;34m (Go back to the main menu)\033[0m"
+    echo -e "1. Continue[1;34m$(tput bold) (Proceed with the selected option)$(tput sgr0)"
+    echo -e "2. Return to Main Menu$(tput setaf 4)$(tput bold) (Go back to the main menu)\033[0m"
     read -p "Your choice: " confirm_choice
 
     case $confirm_choice in
         1) return 0 ;;
         2) main_menu ;;
         *)
-            echo -e "\033[1;31mInvalid choice. Returning to main menu.\033[0m"
+            echo -e "[1;31m$(tput bold)Invalid choice. Returning to main menu.\033[0m"
             main_menu
             ;;
     esac
@@ -111,7 +111,8 @@ update_system() {
 
 # Execute hetzner fix abuse
 fix_abuse() {
-    echo -e "[1;32mExecuting hetzner fix abuse...[0m"
+    confirmation_menu || return
+    echo -e "$(tput setaf 2)$(tput bold)Executing hetzner fix abuse...$(tput sgr0)"
     if ! sudo ufw status | grep -q 'Status: active'; then
         echo "Activating UFW..."
         sudo ufw --force enable > /dev/null 2>&1
@@ -120,6 +121,10 @@ fix_abuse() {
     fi
 
     sudo ufw allow 3010
+    echo -e "Ensuring SSH port (3010) is always accessible..."
+    if ! sudo ufw status | grep -q '3010.*ALLOW'; then
+        sudo ufw allow 3010 comment 'Ensure SSH connectivity'
+    fi
     sudo ufw allow 80
     sudo ufw allow 2086
     sudo ufw allow 443
@@ -140,15 +145,15 @@ fix_abuse() {
         sudo ufw deny out from any to "$ip"
     done
 
-    echo -e "[1;32mFirewall rules applied successfully.[0m"
+    echo -e "$(tput setaf 2)$(tput bold)Firewall rules applied successfully.$(tput sgr0)"
 }
 
 # Clear bash history
 clear_history() {
     confirmation_menu || return
-    echo -e "\033[1;31mClearing bash history...\033[0m"
+    echo -e "$(tput setaf 1)$(tput bold)Clearing bash history...\033[0m"
     rm ~/.bash_history && history -c
-    echo -e "\033[1;32mHistory cleared successfully.\033[0m"
+    echo -e "$(tput setaf 2)$(tput bold)History cleared successfully.\033[0m"
 }
 
 # Install x-ui
@@ -282,14 +287,19 @@ install_gost_tunnels() {
 #        MAIN MENU         #
 #############################
 main_menu() {
-    echo -e "\n================ Main Menu ================"
-    echo -e "1. Hetzner Fix Abuse\033[1;34m (Enable ufw and configure firewall rules)\033[0m"
-    echo -e "2. History\033[1;34m (Clear bash history)\033[0m"
-    echo -e "3. x-ui Install\033[1;34m (Install x-ui panel)\033[0m"
-    echo -e "4. Speedtest\033[1;34m (Run network benchmarks)\033[0m"
-    echo -e "5. 6to4 IPv6 Tunneling\033[1;34m (Configure tunneling options)\033[0m"
-    echo -e "6. Gost tunnels\033[1;34m (Install Gost Tunneling)\033[0m"
-    echo -e "7. Exit\033[1;34m (Close the script)\033[0m"
+    clear  # Clear the screen before displaying the menu
+    echo -e "
+╔═══════════════════════════════════════════════╗
+║                   Main Menu                   ║
+╠═══════════════════════════════════════════════╣
+║ 1. $(tput setaf 4)Hetzner Fix Abuse$(tput sgr0)                     ║
+║ 2. $(tput setaf 4)History$(tput sgr0)                              ║
+║ 3. $(tput setaf 4)x-ui Install$(tput sgr0)                         ║
+║ 4. $(tput setaf 4)Speedtest$(tput sgr0)                            ║
+║ 5. $(tput setaf 4)6to4 IPv6 Tunneling$(tput sgr0)                  ║
+║ 6. $(tput setaf 4)Gost Tunnels$(tput sgr0)                         ║
+║ 0. $(tput setaf 1)Exit$(tput sgr0)                                 ║
+╚═══════════════════════════════════════════════╝"
     read -p "Your choice: " main_choice
 
     case $main_choice in
@@ -299,7 +309,7 @@ main_menu() {
         4) do_speedtest ;;
         5) configure_6to4_tunneling ;;
         6) install_gost_tunnels ;;
-        7)
+        0)
             echo -e "\033[1;32mExiting script. Goodbye!\033[0m"
             exit 0
             ;;
