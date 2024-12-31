@@ -339,6 +339,99 @@ install_gost_tunnels() {
     echo -e "\033[1;32mGost tunnels installation completed.\033[0m"
 }
 
+
+nanem_server() {
+    while true; do
+        clear
+        echo -e "
++----------------------------------------------------+
+▒              Nanem Server Configuration             ▒
+▒----------------------------------------------------▒
+▒ 1. Google DNS                                       ▒
+▒ 2. Cloudflare DNS                                   ▒
+▒ 3. OpenDNS                                          ▒
+▒ 4. Quad9 DNS                                        ▒
+▒ 5. 403 DNS                                          ▒
+▒ 6. Electrotm DNS                                    ▒
+▒ 7. Begzar DNS                                       ▒
+▒ 8. Shecan DNS                                       ▒
+▒ 0. Return to Main Menu                              ▒
++----------------------------------------------------+
+"
+        read -p "Your choice: " nanem_choice
+
+        case $nanem_choice in
+            1) 
+                echo "Setting DNS to Google..."
+                set_dns "8.8.8.8" "8.8.4.4" "2001:4860:4860::8888" "2001:4860:4860::8844"
+                ;;
+            2) 
+                echo "Setting DNS to Cloudflare..."
+                set_dns "1.1.1.1" "1.0.0.1" "2606:4700:4700::1111" "2606:4700:4700::1001"
+                ;;
+            3) 
+                echo "Setting DNS to OpenDNS..."
+                set_dns "208.67.222.222" "208.67.220.220" "2620:119:35::35" "2620:119:53::53"
+                ;;
+            4)
+                echo "Setting DNS to Quad9..."
+                set_dns "9.9.9.9" "149.112.112.112" "2620:fe::fe" "2620:fe::9"
+                ;;
+            5)
+                echo "Setting DNS to 403 DNS..."
+                set_dns "10.202.10.10" "10.202.10.11"
+                ;;
+            6)
+                echo "Setting DNS to Electrotm DNS..."
+                set_dns "78.157.42.100" "78.157.42.101"
+                ;;
+            7)
+                echo "Setting DNS to Begzar DNS..."
+                set_dns "185.51.200.2" "185.51.200.1"
+                ;;
+            8)
+                echo "Setting DNS to Shecan DNS..."
+                set_dns "178.22.122.100" "185.51.200.2"
+                ;;
+            0) 
+                return
+                ;;
+            *) 
+                echo "Invalid choice. Please try again."
+                ;;
+        esac
+        echo -e "[1;32mDNS has been updated successfully![0m"
+        read -p "Press Enter to return to the Nanem Server menu."
+    done
+}
+
+set_dns() {
+    local ipv4_primary=$1
+    local ipv4_secondary=$2
+    local ipv6_primary=$3
+    local ipv6_secondary=$4
+
+    # Backup existing resolv.conf
+    cp /etc/resolv.conf /etc/resolv.conf.bak
+
+    # Set the new DNS
+    echo "nameserver $ipv4_primary" > /etc/resolv.conf
+    echo "nameserver $ipv4_secondary" >> /etc/resolv.conf
+    if [ -n "$ipv6_primary" ]; then
+        echo "nameserver $ipv6_primary" >> /etc/resolv.conf
+    fi
+    if [ -n "$ipv6_secondary" ]; then
+        echo "nameserver $ipv6_secondary" >> /etc/resolv.conf
+    fi
+
+    # Make the change permanent by updating systemd-resolved
+    if [ -f /etc/systemd/resolved.conf ]; then
+        sed -i "s/^#DNS=.*/DNS=$ipv4_primary $ipv4_secondary $ipv6_primary $ipv6_secondary/" /etc/systemd/resolved.conf
+        sed -i "s/^#FallbackDNS=.*/FallbackDNS=/" /etc/systemd/resolved.conf
+        systemctl restart systemd-resolved
+    fi
+}
+
 #############################
 #        MAIN MENU         #
 #############################
@@ -354,6 +447,7 @@ main_menu() {
 ║ 4. $(tput setaf 5)Speedtest$(tput sgr0)                            ║
 ║ 5. $(tput setaf 6)6to4 IPv6 Tunneling$(tput sgr0)                  ║
 ║ 6. $(tput setaf 1)Gost Tunnels$(tput sgr0)                         ║
+║ 7. Nanem Server                                     ║
 ║ 0. $(tput setaf 7)Exit$(tput sgr0)                                 ║
 ╚═══════════════════════════════════════════════╝"
     read -p "Your choice: " main_choice
@@ -365,7 +459,8 @@ main_menu() {
         4) do_speedtest ; main_menu ;;
         5) configure_6to4_tunneling ; main_menu ;;
         6) install_gost_tunnels ; main_menu ;;
-        0)
+            7) nanem_server ; main_menu ;;
+0)
             echo -e "\033[1;32mExiting script. Goodbye!\033[0m"
             exit 0
             ;;
